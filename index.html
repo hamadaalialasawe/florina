@@ -6,25 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>نظام إدارة موظفين فلورينا كافي</title>
     <meta name="description" content="نظام إدارة شامل لموظفين المقاهي والمطاعم" />
-    <script>
-  // الكود السري اللي انت عايز تسمح له بالدخول
-  const validInviteCodes = ["abc123", "xyz789", "florina2025"]; // تقدر تضيف أكتر من كود
-
-  // نحصل على كود الدعوة من الرابط
-  const urlParams = new URLSearchParams(window.location.search);
-  const inviteCode = urlParams.get('invite');
-
-  // التحقق
-  if (!validInviteCodes.includes(inviteCode)) {
-    // لو الكود غير صحيح، نعرض صفحة رفض
-    document.body.innerHTML = `
-      <div style="text-align:center; padding:50px;">
-        <h1>🚫 Access Denied</h1>
-        <p>This site is invite-only.</p>
-      </div>
-    `;
-  }
-</script>
   </head>
   <body>
     <div id="root"></div>
