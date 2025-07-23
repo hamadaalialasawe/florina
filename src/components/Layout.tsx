@@ -10,8 +10,11 @@ import {
   FileText, 
   Settings,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../hooks/useToast';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,6 +24,17 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { signOut, user } = useAuth();
+  const { showToast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      showToast('تم تسجيل الخروج بنجاح', 'success');
+    } catch (error) {
+      showToast('حدث خطأ أثناء تسجيل الخروج', 'error');
+    }
+  };
 
   const menuItems = [
     { id: 'employees', label: 'إدارة الموظفين', icon: Users },
@@ -48,6 +62,19 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, onViewChange }) 
                 {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
               <h1 className="text-xl font-bold text-gray-900">نظام إدارة موظفين فلورينا كافي</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600 hidden sm:block">
+                مرحباً، {user?.email}
+              </span>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                title="تسجيل الخروج"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:block">خروج</span>
+              </button>
             </div>
           </div>
         </div>

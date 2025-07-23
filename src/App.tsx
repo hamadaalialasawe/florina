@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { useToast } from './hooks/useToast';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
+import AuthForm from './components/AuthForm';
 import ToastContainer from './components/ToastContainer';
+import LoadingSpinner from './components/LoadingSpinner';
 import EmployeesView from './views/EmployeesView';
 import AttendanceView from './views/AttendanceView';
 import AdvancesView from './views/AdvancesView';
@@ -12,8 +14,21 @@ import LeavesView from './views/LeavesView';
 import SummaryView from './views/SummaryView';
 import SettingsView from './views/SettingsView';
 
-function App() {
+const AppContent: React.FC = () => {
+  const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('employees');
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthForm />;
+  }
 
   const renderCurrentView = () => {
     switch (currentView) {
@@ -45,8 +60,16 @@ function App() {
       <Layout currentView={currentView} onViewChange={setCurrentView}>
         {renderCurrentView()}
       </Layout>
-      <ToastContainer />
     </div>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+      <ToastContainer />
+    </AuthProvider>
   );
 }
 
