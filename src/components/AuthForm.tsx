@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { LogIn, UserPlus, Eye, EyeOff, Coffee } from 'lucide-react';
+import { LogIn, UserPlus, Eye, EyeOff, Coffee, Clock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
 
-const AuthForm: React.FC = () => {
+interface AuthFormProps {
+  onEmployeeMode: () => void;
+}
+
+const AuthForm: React.FC<AuthFormProps> = ({ onEmployeeMode }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -178,6 +182,18 @@ const AuthForm: React.FC = () => {
                 ? 'لديك حساب بالفعل؟ سجل الدخول' 
                 : 'ليس لديك حساب؟ أنشئ حساباً جديداً'
               }
+            </button>
+          </div>
+
+          {/* Employee Login Button */}
+          <div className="mt-4 text-center border-t border-gray-200 pt-4">
+            <button
+              onClick={onEmployeeMode}
+              className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center justify-center gap-2 mx-auto"
+              disabled={loading}
+            >
+              <Clock className="w-4 h-4" />
+              تسجيل دخول الموظفين
             </button>
           </div>
         </div>

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import AuthForm from './components/AuthForm';
+import EmployeeAuthForm from './components/EmployeeAuthForm';
+import EmployeeAttendanceView from './components/EmployeeAttendanceView';
 import ToastContainer from './components/ToastContainer';
 import LoadingSpinner from './components/LoadingSpinner';
 import EmployeesView from './views/EmployeesView';
@@ -17,6 +19,8 @@ import SettingsView from './views/SettingsView';
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('employees');
+  const [isEmployeeMode, setIsEmployeeMode] = useState(false);
+  const [loggedInEmployee, setLoggedInEmployee] = useState<any>(null);
 
   if (loading) {
     return (
@@ -27,7 +31,28 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <AuthForm />;
+    if (isEmployeeMode) {
+      if (loggedInEmployee) {
+        return (
+          <EmployeeAttendanceView 
+            employee={loggedInEmployee}
+            onLogout={() => {
+              setLoggedInEmployee(null);
+              setIsEmployeeMode(false);
+            }}
+          />
+        );
+      } else {
+        return (
+          <EmployeeAuthForm
+            onEmployeeLogin={setLoggedInEmployee}
+            onBackToAdmin={() => setIsEmployeeMode(false)}
+          />
+        );
+      }
+    } else {
+      return <AuthForm onEmployeeMode={() => setIsEmployeeMode(true)} />;
+    }
   }
 
   const renderCurrentView = () => {
