@@ -28,13 +28,20 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({
 
     try {
       // البحث عن الموظف بالرقم الوظيفي
-      const { data: employee, error: employeeError } = await supabase
+      const { data: employees, error: employeeError } = await supabase
         .from('employees')
         .select('*')
-        .eq('employee_number', employeeNumber)
-        .single();
+        .eq('employee_number', employeeNumber);
 
-      if (employeeError || !employee) {
+      if (employeeError) {
+        showToast('حدث خطأ في البحث عن الموظف', 'error');
+        setLoading(false);
+        return;
+      }
+
+      const employee = employees && employees.length > 0 ? employees[0] : null;
+
+      if (!employee) {
         showToast('الرقم الوظيفي غير موجود', 'error');
         setLoading(false);
         return;
