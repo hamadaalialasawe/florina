@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import AuthForm from './components/AuthForm';
 import EmployeeAuthForm from './components/EmployeeAuthForm';
+import EmployeeRegistration from './components/EmployeeRegistration';
 import EmployeeAttendanceView from './components/EmployeeAttendanceView';
 import ToastContainer from './components/ToastContainer';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -20,6 +21,7 @@ const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState('employees');
   const [isEmployeeMode, setIsEmployeeMode] = useState(false);
+  const [showEmployeeRegistration, setShowEmployeeRegistration] = useState(false);
   const [loggedInEmployee, setLoggedInEmployee] = useState<any>(null);
 
   if (loading) {
@@ -39,6 +41,17 @@ const AppContent: React.FC = () => {
             onLogout={() => {
               setLoggedInEmployee(null);
               setIsEmployeeMode(false);
+              setShowEmployeeRegistration(false);
+            }}
+          />
+        );
+      } else if (showEmployeeRegistration) {
+        return (
+          <EmployeeRegistration
+            onBackToLogin={() => setShowEmployeeRegistration(false)}
+            onRegistrationSuccess={() => {
+              setShowEmployeeRegistration(false);
+              showToast('تم التسجيل بنجاح! يمكنك الآن تسجيل الدخول', 'success');
             }}
           />
         );
@@ -46,7 +59,11 @@ const AppContent: React.FC = () => {
         return (
           <EmployeeAuthForm
             onEmployeeLogin={setLoggedInEmployee}
-            onBackToAdmin={() => setIsEmployeeMode(false)}
+            onBackToAdmin={() => {
+              setIsEmployeeMode(false);
+              setShowEmployeeRegistration(false);
+            }}
+            onShowRegistration={() => setShowEmployeeRegistration(true)}
           />
         );
       }

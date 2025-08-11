@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
-import { LogIn, Clock, User, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Clock, User, Eye, EyeOff, UserPlus } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../hooks/useToast';
 import LoadingSpinner from './LoadingSpinner';
+import bcrypt from 'bcryptjs';
 
 interface EmployeeAuthFormProps {
   onEmployeeLogin: (employee: any) => void;
   onBackToAdmin: () => void;
+  onShowRegistration: () => void;
 }
 
-const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({ onEmployeeLogin, onBackToAdmin }) => {
+const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({ 
+  onEmployeeLogin, 
+  onBackToAdmin, 
+  onShowRegistration 
+}) => {
   const [employeeNumber, setEmployeeNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,10 +41,24 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({ onEmployeeLogin, on
       }
 
       // التحقق من كلمة المرور (في التطبيق الحقيقي يجب استخدام hash)
-      // هنا نستخدم كلمة مرور بسيطة للتجربة
-      const expectedPassword = employee.password_hash || '123456';
+      const expectedPassword = employee.password_hash;
       
-      if (password !== expectedPassword) {
+      // التحقق من كلمة المرور المشفرة أو الافتراضية
+      let passwordValid = false;
+      if (expectedPassword) {
+        // إذا كانت كلمة المرور مشفرة
+        if (expectedPassword.startsWith('$2')) {
+          passwordValid = await bcrypt.compare(password, expectedPassword);
+        } else {
+          // كلمة مرور غير مشفرة (للتوافق مع النظام القديم)
+          passwordValid = password === expectedPassword;
+        }
+      } else {
+        // كلمة المرور الافتراضية
+        passwordValid = password === '123456';
+      }
+      
+      if (!passwordValid) {
         showToast('كلمة المرور غير صحيحة', 'error');
         setLoading(false);
         return;
@@ -152,6 +172,18 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({ onEmployeeLogin, on
               العودة لتسجيل دخول الإدارة
             </button>
           </div>
+
+          {/* Employee Registration Button */}
+          <div className="mt-4 text-center border-t border-gray-200 pt-4">
+            <button
+              onClick={onShowRegistration}
+              className="text-emerald-600 hover:text-emerald-800 text-sm font-medium flex items-center justify-center gap-2 mx-auto transition-colors"
+              disabled={loading}
+            >
+              <UserPlus className="w-4 h-4" />
+              تسجيل موظف جديد
+            </button>
+          </div>
         </div>
 
         {/* Instructions */}
@@ -159,7 +191,8 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({ onEmployeeLogin, on
           <h3 className="text-sm font-semibold text-green-800 mb-2">تعليمات:</h3>
           <div className="text-xs text-green-700 space-y-1">
             <p>• استخدم رقمك الوظيفي المسجل في النظام</p>
-            <p>• كلمة المرور الافتراضية: 123456</p>
+            <p>• كلمة المرور الافتراضية للحسابات القديمة: 123456</p>
+            <p>• الموظفون الجدد يجب تسجيل حساب جديد أولاً</p>
             <p>• يمكنك تسجيل الحضور والغياب فقط</p>
           </div>
         </div>
