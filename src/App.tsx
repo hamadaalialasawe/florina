@@ -16,9 +16,11 @@ import OvertimeView from './views/OvertimeView';
 import LeavesView from './views/LeavesView';
 import SummaryView from './views/SummaryView';
 import SettingsView from './views/SettingsView';
+import { useToast } from './hooks/useToast';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
+  const { showToast } = useToast();
   const [currentView, setCurrentView] = useState('employees');
   const [isEmployeeMode, setIsEmployeeMode] = useState(false);
   const [showEmployeeRegistration, setShowEmployeeRegistration] = useState(false);
