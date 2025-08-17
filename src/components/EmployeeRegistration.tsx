@@ -83,8 +83,14 @@ const EmployeeRegistration: React.FC<EmployeeRegistrationProps> = ({
         
         setStep(2);
       } catch (error) {
-        // إذا لم يجد الرقم، فهذا جيد
-        setStep(2);
+        // التحقق من نوع الخطأ
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'PGRST116') {
+          // إذا لم يجد الرقم، فهذا جيد - يمكن المتابعة
+          setStep(2);
+        } else {
+          // خطأ آخر
+          showToast('حدث خطأ أثناء التحقق من الرقم الوظيفي', 'error');
+        }
       } finally {
         setLoading(false);
       }
