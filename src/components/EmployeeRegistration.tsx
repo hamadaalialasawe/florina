@@ -72,10 +72,13 @@ const EmployeeRegistration: React.FC<EmployeeRegistrationProps> = ({
         const { data, error } = await supabase
           .from('employees')
           .select('employee_number')
-          .eq('employee_number', formData.employeeNumber.trim())
-          .single();
+          .eq('employee_number', formData.employeeNumber.trim());
 
-        if (data) {
+        if (error) {
+          throw error;
+        }
+
+        if (data && data.length > 0) {
           showToast('الرقم الوظيفي موجود مسبقاً', 'error');
           setLoading(false);
           return;
@@ -83,14 +86,7 @@ const EmployeeRegistration: React.FC<EmployeeRegistrationProps> = ({
         
         setStep(2);
       } catch (error) {
-        // التحقق من نوع الخطأ
-        if (error && typeof error === 'object' && 'code' in error && error.code === 'PGRST116') {
-          // إذا لم يجد الرقم، فهذا جيد - يمكن المتابعة
-          setStep(2);
-        } else {
-          // خطأ آخر
-          showToast('حدث خطأ أثناء التحقق من الرقم الوظيفي', 'error');
-        }
+        showToast('حدث خطأ أثناء التحقق من الرقم الوظيفي', 'error');
       } finally {
         setLoading(false);
       }
