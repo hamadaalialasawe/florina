@@ -26,6 +26,8 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({
     e.preventDefault();
     setLoading(true);
 
+    console.log('محاولة تسجيل دخول للموظف:', employeeNumber);
+
     try {
       // البحث عن الموظف بالرقم الوظيفي
       const { data: employees, error: employeeError } = await supabase
@@ -34,10 +36,13 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({
         .eq('employee_number', employeeNumber);
 
       if (employeeError) {
+        console.error('خطأ في البحث عن الموظف:', employeeError);
         showToast('حدث خطأ في البحث عن الموظف', 'error');
         setLoading(false);
         return;
       }
+
+      console.log('نتائج البحث:', employees);
 
       const employee = employees && employees.length > 0 ? employees[0] : null;
 
@@ -47,6 +52,8 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({
         return;
       }
 
+      console.log('تم العثور على الموظف:', employee);
+
       // التحقق من كلمة المرور (في التطبيق الحقيقي يجب استخدام hash)
       const expectedPassword = employee.password_hash;
       
@@ -55,16 +62,21 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({
       if (expectedPassword) {
         // إذا كانت كلمة المرور مشفرة
         if (expectedPassword.startsWith('$2')) {
+          console.log('التحقق من كلمة المرور المشفرة');
           passwordValid = await bcrypt.compare(password, expectedPassword);
         } else {
           // كلمة مرور غير مشفرة (للتوافق مع النظام القديم)
+          console.log('التحقق من كلمة المرور غير المشفرة');
           passwordValid = password === expectedPassword;
         }
       } else {
         // كلمة المرور الافتراضية
+        console.log('استخدام كلمة المرور الافتراضية');
         passwordValid = password === '123456';
       }
       
+      console.log('نتيجة التحقق من كلمة المرور:', passwordValid);
+
       if (!passwordValid) {
         showToast('كلمة المرور غير صحيحة', 'error');
         setLoading(false);
@@ -80,6 +92,7 @@ const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({
       showToast(`مرحباً ${employee.name}`, 'success');
       onEmployeeLogin(employee);
     } catch (error) {
+      console.error('خطأ في تسجيل الدخول:', error);
       showToast('حدث خطأ أثناء تسجيل الدخول', 'error');
     } finally {
       setLoading(false);
