@@ -238,6 +238,17 @@ const EmployeeAttendanceView: React.FC<EmployeeAttendanceViewProps> = ({ employe
           <h3 className="text-lg font-semibold text-blue-800 mb-3">تعليمات مهمة:</h3>
           <div className="text-blue-700 space-y-2">
             <p>• يجب تسجيل الحضور يومياً</p>
+            <p>• إذا لم تجد رقمك الوظيفي، تواصل مع الإدارة لإضافتك</p>
+          </div>
+        </div>
+
+        {/* Demo Employee Info */}
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-blue-800 mb-2">للتجربة:</h3>
+          <div className="text-xs text-blue-700 space-y-1">
+            <p><strong>رقم وظيفي تجريبي:</strong> 001</p>
+            <p><strong>كلمة المرور:</strong> 123456</p>
+            <p className="text-blue-600 font-medium">يمكن للإدارة إضافة هذا الموظف من قسم "إدارة الموظفين"</p>
           </div>
         </div>
       </div>
