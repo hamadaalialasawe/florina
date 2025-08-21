@@ -50,6 +50,20 @@ const EmployeesView: React.FC = () => {
       return;
     }
 
+    // التحقق من عدم وجود الرقم الوظيفي مسبقاً قبل الإضافة
+    if (!editingEmployee) {
+      const { data: existingEmployee } = await supabase
+        .from('employees')
+        .select('employee_number')
+        .eq('employee_number', formData.employee_number.trim())
+        .single();
+      
+      if (existingEmployee) {
+        showToast('الرقم الوظيفي موجود مسبقاً', 'error');
+        return;
+      }
+    }
+
     try {
       if (editingEmployee) {
         const { error } = await supabase
@@ -82,7 +96,7 @@ const EmployeesView: React.FC = () => {
           }
           throw error;
         }
-        showToast('تم إضافة الموظف بنجاح (كلمة المرور الافتراضية: 123456)', 'success');
+        showToast(`تم إضافة الموظف "${formData.name}" بنجاح. كلمة المرور الافتراضية: 123456`, 'success');
       }
       
       resetForm();
@@ -415,7 +429,8 @@ const EmployeesView: React.FC = () => {
                 تغيير كلمة المرور
               </h3>
               <p className="text-gray-600 text-sm mt-1">
-                الموظف: {showPasswordForm.name} ({showPasswordForm.employee_number})
+                <strong>ملاحظة:</strong> سيتم إنشاء كلمة مرور افتراضية للموظف: <code className="bg-blue-100 px-1 rounded">123456</code><br/>
+                <span className="text-xs">يمكن للموظف استخدام هذه الكلمة لتسجيل الدخول وتسجيل الحضور</span>
               </p>
             </div>
             

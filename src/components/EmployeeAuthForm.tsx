@@ -1,224 +1,257 @@
-import React, { useState } from 'react';
-import { LogIn, Clock, User, Eye, EyeOff, UserPlus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Clock, LogOut, CheckCircle, XCircle, Calendar, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../hooks/useToast';
 import LoadingSpinner from './LoadingSpinner';
-import bcrypt from 'bcryptjs';
 
-interface EmployeeAuthFormProps {
-  onEmployeeLogin: (employee: any) => void;
-  onBackToAdmin: () => void;
-  onShowRegistration: () => void;
+interface EmployeeAttendanceViewProps {
+  employee: any;
+  onLogout: () => void;
 }
 
-const EmployeeAuthForm: React.FC<EmployeeAuthFormProps> = ({ 
-  onEmployeeLogin, 
-  onBackToAdmin, 
-  onShowRegistration 
-}) => {
-  const [employeeNumber, setEmployeeNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+const EmployeeAttendanceView: React.FC<EmployeeAttendanceViewProps> = ({ employee, onLogout }) => {
   const [loading, setLoading] = useState(false);
+  const [todayAttendance, setTodayAttendance] = useState<any>(null);
+  const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
   const { showToast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  useEffect(() => {
+    fetchTodayAttendance();
+    fetchRecentAttendance();
+  }, []);
 
-    console.log('محاولة تسجيل دخول للموظف:', employeeNumber);
-
+  const fetchTodayAttendance = async () => {
     try {
-      // البحث عن الموظف بالرقم الوظيفي
-      const { data: employees, error: employeeError } = await supabase
-        .from('employees')
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('attendance')
         .select('*')
-        .eq('employee_number', employeeNumber);
+        .eq('employee_id', employee.id)
+        .eq('date', today)
+        .single();
 
-      if (employeeError) {
-        console.error('خطأ في البحث عن الموظف:', employeeError);
-        showToast('حدث خطأ في البحث عن الموظف', 'error');
-        setLoading(false);
-        return;
-      }
-
-      console.log('نتائج البحث:', employees);
-
-      const employee = employees && employees.length > 0 ? employees[0] : null;
-
-      if (!employee) {
-        showToast('الرقم الوظيفي غير موجود', 'error');
-        setLoading(false);
-        return;
-      }
-
-      console.log('تم العثور على الموظف:', employee);
-
-      // التحقق من كلمة المرور (في التطبيق الحقيقي يجب استخدام hash)
-      const expectedPassword = employee.password_hash;
-      
-      // التحقق من كلمة المرور المشفرة أو الافتراضية
-      let passwordValid = false;
-      if (expectedPassword) {
-        // إذا كانت كلمة المرور مشفرة
-        if (expectedPassword.startsWith('$2')) {
-          console.log('التحقق من كلمة المرور المشفرة');
-          passwordValid = await bcrypt.compare(password, expectedPassword);
-        } else {
-          // كلمة مرور غير مشفرة (للتوافق مع النظام القديم)
-          console.log('التحقق من كلمة المرور غير المشفرة');
-          passwordValid = password === expectedPassword;
-        }
-      } else {
-        // كلمة المرور الافتراضية
-        console.log('استخدام كلمة المرور الافتراضية');
-        passwordValid = password === '123456';
-      }
-      
-      console.log('نتيجة التحقق من كلمة المرور:', passwordValid);
-
-      if (!passwordValid) {
-        showToast('كلمة المرور غير صحيحة', 'error');
-        setLoading(false);
-        return;
-      }
-
-      // تحديث آخر تسجيل دخول
-      await supabase
-        .from('employees')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', employee.id);
-
-      showToast(`مرحباً ${employee.name}`, 'success');
-      onEmployeeLogin(employee);
+      if (error && error.code !== 'PGRST116') throw error;
+      setTodayAttendance(data);
     } catch (error) {
-      console.error('خطأ في تسجيل الدخول:', error);
-      showToast('حدث خطأ أثناء تسجيل الدخول', 'error');
+      console.error('Error fetching today attendance:', error);
+    }
+  };
+
+  const fetchRecentAttendance = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('employee_id', employee.id)
+        .order('date', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setRecentAttendance(data || []);
+    } catch (error) {
+      console.error('Error fetching recent attendance:', error);
+    }
+  };
+
+  const handleAttendanceSubmit = async (status: 'حضور' | 'غياب') => {
+    setLoading(true);
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const now = new Date().toISOString();
+
+      const { error } = await supabase
+        .from('attendance')
+        .upsert({
+          employee_id: employee.id,
+          date: today,
+          status: status,
+          check_in_time: now
+        }, { 
+          onConflict: 'employee_id,date',
+          ignoreDuplicates: false 
+        });
+      
+      if (error) throw error;
+      
+      showToast(`تم تسجيل ${status} بنجاح`, 'success');
+      fetchTodayAttendance();
+      fetchRecentAttendance();
+    } catch (error) {
+      showToast('حدث خطأ أثناء تسجيل الحضور', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  const getCurrentTime = () => {
+    return new Date().toLocaleString('ar-EG', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-100 flex items-center justify-center p-4" dir="rtl">
-      <div className="max-w-md w-full">
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-            <Clock className="w-8 h-8 text-green-600" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">تسجيل حضور الموظفين</h1>
-          <p className="text-gray-600">فلورينا كافي</p>
-        </div>
-
-        {/* Employee Login Form */}
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              تسجيل دخول الموظف
-            </h2>
-            <p className="text-gray-600 text-center text-sm">
-              أدخل بياناتك لتسجيل الحضور
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                الرقم الوظيفي
-              </label>
-              <div className="relative">
-                <User className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  value={employeeNumber}
-                  onChange={(e) => setEmployeeNumber(e.target.value)}
-                  className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="أدخل رقمك الوظيفي"
-                  required
-                  disabled={loading}
-                />
+    <div className="min-h-screen bg-gray-50" dir="rtl">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold text-gray-900">{employee.name}</h1>
+                  <p className="text-sm text-gray-600">رقم: {employee.employee_number}</p>
+                </div>
               </div>
             </div>
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              تسجيل خروج
+            </button>
+          </div>
+        </div>
+      </header>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                كلمة المرور
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  placeholder="أدخل كلمة المرور"
-                  required
-                  disabled={loading}
-                />
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        {/* Welcome Message */}
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg shadow-md border">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">مرحباً {employee.name}</h2>
+            <p className="text-gray-600 mb-4">رقمك الوظيفي: {employee.employee_number}</p>
+            <div className="bg-white p-4 rounded-lg inline-block">
+              <Clock className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+              <p className="text-sm text-gray-700">{getCurrentTime()}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Today's Status */}
+        <div className="bg-white p-8 rounded-lg shadow-md border">
+          <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            تسجيل الحضور لليوم
+          </h3>
+          
+          {todayAttendance ? (
+            <div className="text-center p-6 bg-gray-50 rounded-lg">
+              <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full text-xl font-bold shadow-md ${
+                todayAttendance.status === 'حضور' 
+                  ? 'bg-green-500 text-white' 
+                  : 'bg-red-500 text-white'
+              }`}>
+                {todayAttendance.status === 'حضور' ? (
+                  <CheckCircle className="w-6 h-6" />
+                ) : (
+                  <XCircle className="w-6 h-6" />
+                )}
+                تم تسجيل {todayAttendance.status}
+              </div>
+              <p className="text-gray-600 mt-4 text-lg">
+                تم التسجيل في: {new Date(todayAttendance.check_in_time).toLocaleString('ar-EG')}
+              </p>
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <p className="text-blue-800 font-medium">شكراً لك! تم تسجيل حضورك بنجاح</p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center p-6">
+              <p className="text-gray-600 mb-6 text-lg">يرجى تسجيل حضورك لليوم</p>
+              <div className="flex gap-6 justify-center">
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => handleAttendanceSubmit('حضور')}
                   disabled={loading}
+                  className="bg-green-600 text-white px-8 py-4 rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center gap-3 text-lg font-semibold shadow-lg"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {loading ? <LoadingSpinner /> : <CheckCircle className="w-6 h-6" />}
+                  تسجيل حضور
+                </button>
+                <button
+                  onClick={() => handleAttendanceSubmit('غياب')}
+                  disabled={loading}
+                  className="bg-red-600 text-white px-8 py-4 rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-3 text-lg font-semibold shadow-lg"
+                >
+                  {loading ? <LoadingSpinner /> : <XCircle className="w-6 h-6" />}
+                  تسجيل غياب
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">كلمة المرور الافتراضية: 123456</p>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <LoadingSpinner />
-              ) : (
-                <>
-                  <LogIn className="w-4 h-4" />
-                  تسجيل الدخول
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={onBackToAdmin}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              disabled={loading}
-            >
-              العودة لتسجيل دخول الإدارة
-            </button>
-          </div>
-
-          {/* Employee Registration Button */}
-          <div className="mt-4 text-center border-t border-gray-200 pt-4">
-            <button
-              onClick={onShowRegistration}
-              className="text-emerald-600 hover:text-emerald-800 text-sm font-medium flex items-center justify-center gap-2 mx-auto transition-colors"
-              disabled={loading}
-            >
-              <UserPlus className="w-4 h-4" />
-              تسجيل موظف جديد
-            </button>
-          </div>
+          )}
         </div>
+
+        {/* Recent Attendance - Simplified */}
+        {recentAttendance.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900">آخر 5 أيام</h3>
+            </div>
+            <div className="p-6">
+              <div className="grid gap-3">
+                {recentAttendance.slice(0, 5).map((record) => (
+                  <div key={record.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {new Date(record.date).toLocaleDateString('ar-EG', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {record.check_in_time ? 
+                          new Date(record.check_in_time).toLocaleTimeString('ar-EG') : 
+                          'غير محدد'
+                        }
+                      </p>
+                    </div>
+                    <span className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                      record.status === 'حضور' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {record.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Instructions */}
-        <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-green-800 mb-2">تعليمات:</h3>
-          <div className="text-xs text-green-700 space-y-1">
-            <p>• استخدم رقمك الوظيفي المسجل في النظام</p>
-            <p>• كلمة المرور الافتراضية للحسابات القديمة: 123456</p>
-            <p>• الموظفون الجدد يجب تسجيل حساب جديد أولاً</p>
-            <p>• يمكنك تسجيل الحضور والغياب فقط</p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-blue-800 mb-3">تعليمات مهمة:</h3>
+          <div className="text-blue-700 space-y-2">
+            <p>• يجب تسجيل الحضور يومياً</p>
+      </div>
+
+        {/* Demo Employee Info */}
+        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-blue-800 mb-2">للتجربة:</h3>
+          <div className="text-xs text-blue-700 space-y-1">
+            <p><strong>رقم وظيفي تجريبي:</strong> 001</p>
+            <p><strong>كلمة المرور:</strong> 123456</p>
+            <p className="text-blue-600 font-medium">يمكن للإدارة إضافة هذا الموظف من قسم "إدارة الموظفين"</p>
           </div>
         </div>
-      </div>
     </div>
   );
+            <p>• إذا لم تجد رقمك الوظيفي، تواصل مع الإدارة لإضافتك</p>
 };
 
-export default EmployeeAuthForm;
+export default EmployeeAttendanceView;
